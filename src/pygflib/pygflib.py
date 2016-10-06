@@ -105,4 +105,23 @@ class Gfapi(object):
         if mosthelpful:
             return self._apicall(self.U, u'{}/{}'.format((self.SLUG + identifier) if is_slug else identifier,self.A), fields,onlyMostHelpful='True',limit=limit)
         
-        return self._apicall(self.U, u'{}/{}'.format((self.SLUG + identifier) if is_slug else identifier,self.A), fields,limit=limit)
+        return self._apicall(self.U, u'{}/{}'.format((self.SLUG + identifier) if is_slug else identifier,self.A),fields,limit=limit)
+
+
+class FieldContainer():
+
+    def __init__(self,json_item):
+        self.fields = json_item
+
+    def __getitem__(self,field):
+        try:
+            return self.fields[field]
+        except KeyError:
+            raise KeyError("{} not in json response".format(field))
+
+class Question(FieldContainer):
+
+    def __init__(self,json_item):
+        self.fields["username"] = json_item["display_name"]
+        self.fields["username__slug"] = json_item["slug"]
+        #TODO: Add initializations for every api field
