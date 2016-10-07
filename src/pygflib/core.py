@@ -1,9 +1,12 @@
-# -*- coding: utf-8 -*-
 import requests
-from lxml import html
 import re
+from itertools import chain
 
-class Gfapi(object):
+from lxml import html
+
+from pygflib.models import Question,Answer,Comment,User
+
+class Gfapi():
     
     Q = 'questions'
     U = 'users'
@@ -32,7 +35,7 @@ class Gfapi(object):
                        }
         
         r = requests.get('http://www.gutefrage.net/frage_hinzufuegen',headers = header)
-        self.apikey = re.search("key: '([^']+)'", html.document_fromstring(r.text).xpath('//script[1]')[0].text).group(1)
+        self.apikey = re.search("key: '([^']+)'",html.document_fromstring(r.text).xpath('//script[1]')[0].text).group(1)
         
         self.header = header
         self.header['X-Api-Key'] = self.apikey
@@ -57,7 +60,7 @@ class Gfapi(object):
     
         
     def get_gfurl(self,apiurl,fields=''):
-        r = requests.get(apiurl, params = {'fields' : fields}, headers = self.header)
+        r = requests.get(apiurl,params = {'fields' : fields},headers = self.header)
         try:
             json = r.json()
             return json
@@ -66,7 +69,7 @@ class Gfapi(object):
     
     
     def search_tags(self,query,fields='',limit=10):
-        return self._apicall(self.T, fields=fields,prefix=query,limit=limit)
+        return self._apicall(self.T,fields=fields,prefix=query,limit=limit)
     
     
     def get_recent_questions(self,fields='',limit=10):
@@ -74,54 +77,51 @@ class Gfapi(object):
     
     
     def search_questions(self,query,fields='',limit=10):
-        return self._apicall(self.Q, self.SEARCH, fields, limit=limit,query=query)
+        return self._apicall(self.Q,self.SEARCH,fields,limit=limit,query=query)
     
     
     def get_question(self,identifier,fields='',is_slug=False):
-        return self._apicall(self.Q, (self.SLUG + identifier) if is_slug else identifier, fields)
+        return Question(
+                self._apicall(self.Q,(self.SLUG + identifier) if is_slug else identifier,fields)
+                )
     
     
     def get_question_answers(self,identifier,fields='',is_slug=False):
-        return self._apicall(self.Q, u'{}/{}'.format((self.SLUG + identifier) if is_slug else identifier,self.A), fields)
+        return self._apicall(self.Q,u'{}/{}'.format((self.SLUG + identifier) if is_slug else identifier,self.A),fields)
     
     
     def get_user(self,identifier,fields='',is_slug=False):
-        return self._apicall(self.U, (self.SLUG + identifier) if is_slug else identifier, fields)
+        return User(
+                self._apicall(self.U,(self.SLUG + identifier) if is_slug else identifier,fields)
+                )
     
     
     def get_answer(self,identifier,fields=''):
-        return self._apicall(self.A, identifier, fields)
+        return Answer(
+                self._apicall(self.A,identifier,fields)
+                )
     
     
     def get_comment(self,identifier,fields=''):
-        return self._apicall(self.C, identifier, fields)
+        return Comment(
+                self._apicall(self.C,identifier,fields)
+                )
     
     
     def get_user_questions(self,identifier,fields=''):
-        return self._apicall(self.U, u'{}/{}'.format(identifier,self.Q), fields)
+        return self._apicall(self.U,u'{}/{}'.format(identifier,self.Q),fields)
         
    
     def get_user_answers(self,identifier,fields='',limit=20,mosthelpful=False,is_slug=False):
         if mosthelpful:
-            return self._apicall(self.U, u'{}/{}'.format((self.SLUG + identifier) if is_slug else identifier,self.A), fields,onlyMostHelpful='True',limit=limit)
+            return self._apicall(
+                    self.U,
+                    u'{}/{}'.format((self.SLUG + identifier) if is_slug else identifier,self.A),
+                    fields,onlyMostHelpful='True',limit=limit
+                    )
         
-        return self._apicall(self.U, u'{}/{}'.format((self.SLUG + identifier) if is_slug else identifier,self.A),fields,limit=limit)
-
-
-class FieldContainer():
-
-    def __init__(self,json_item):
-        self.fields = json_item
-
-    def __getitem__(self,field):
-        try:
-            return self.fields[field]
-        except KeyError:
-            raise KeyError("{} not in json response".format(field))
-
-class Question(FieldContainer):
-
-    def __init__(self,json_item):
-        self.fields["username"] = json_item["display_name"]
-        self.fields["username__slug"] = json_item["slug"]
-        #TODO: Add initializations for every api field
+        return self._apicall(
+                self.U,
+                u'{}/{}'.format((self.SLUG + identifier) if is_slug else identifier,self.A)
+                ,fields,limit=limit
+                )
