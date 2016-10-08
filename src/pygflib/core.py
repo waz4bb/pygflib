@@ -17,14 +17,8 @@ class Gfapi():
     LATEST = 'latest'
     SEARCH = 'search'
     SLUG = 'slug:'
-    
-    def __init__(self):
-        
-        self.get_apikey()
-        
-    def get_apikey(self,header=None):
-        if header is None:
-            header = {'User-Agent' : 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:39.0) Gecko/20100101 Firefox/39.0',
+
+    DEFAULTHEADER = {'User-Agent' : 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:39.0) Gecko/20100101 Firefox/39.0',
                        'Accept' : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                        'Accept-Language' : 'de,en-US;q=0.7,en;q=0.3',
                        'DNT' : '1',
@@ -33,6 +27,19 @@ class Gfapi():
                        'Origin' : 'http://www.gutefrage.net',
                        'X-Api-Version' : '1'
                        }
+
+    def __init__(self,apikey=None):
+        if apikey:
+            self.header = self.DEFAULTHEADER
+            self.apikey = apikey
+            self.header['X-Api-Key'] = apikey
+
+        else:
+            self.get_apikey()
+        
+    def get_apikey(self,header=None):
+        if header is None:
+           header = self.DEFAULTHEADER 
         
         r = requests.get('http://www.gutefrage.net/frage_hinzufuegen',headers = header)
         self.apikey = re.search("key: '([^']+)'",html.document_fromstring(r.text).xpath('//script[1]')[0].text).group(1)

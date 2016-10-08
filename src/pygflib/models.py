@@ -2,14 +2,21 @@
 
 class Image():
 
-    #TODO: implement all sizes
-    THUMBNAIL = "thumbnail"
     SMALL = "small"
-    ORIGINAL = "original"
+    THUMBNAIL = "thumbnail" #same size as SMALL
+    MEDIUM = "medium"
+    K2 = "2000"
+    K3 = "3000"
+    ORIGINAL = "original" #full size uncropped
+    
+    #Not confirmed to work
+    M4 = "M4_160"
+    MOBILE = "mobile"
+    DESKTOP = "desktop"
 
 
     def __init__(self,json_item):
-        self.iid = json_item["id"]
+        self.id = json_item["id"]
         self.raw_link = json_item["url"]
         self.description = json_item["description"]
 
@@ -26,7 +33,7 @@ class Tag():
     def __init__(self,json_item):
         self.name = json_item["name"]
         self.slug = json_item["slug"]
-        self.tid = json_item["id"]
+        self.id = json_item["id"]
         self.count = json_item["questions"]["total_count"]
 
 
@@ -50,12 +57,26 @@ class User(FieldContainer):
 
     def __init__(self,json_item):
         self.fields = {}
+
+        self.fields["avatar"] = Image(json_item["avatar_image"])
+        self.fields["cover"] = Image(json_item["cover_image"])
+
         self.fields["username"] = json_item["display_name"]
         self.fields["slug"] = json_item["slug"]
+        self.fields["id"] = json_item["id"]
         self.fields["level"] = json_item["level"]
         self.fields["score"] = json_item["score"]
-        #TODO: Add initializations for every api field
-
+        self.fields["creation_date"] = json_item["created_at"]
+        self.fields["roles"] = json_item["roles"]
+        
+        self.fields["description"] = json_item["about_me"]
+        self.fields["profession"] = json_item["profession"]
+        self.fields["birth_date"] = json_item["birthday"]
+        self.fields["gender"] = json_item["gender"]
+        self.fields["address"] = json_item["address"]
+        self.fields["contact_info"] = json_item["contact_information"]
+        self.fields["website"] = json_item["website_url"]
+        #TODO: add advanced fields
 
     def __repr__(self):
         return self.fields["username"]
@@ -65,10 +86,18 @@ class Comment(FieldContainer):
 
     def __init__(self,json_item):
         self.user = User(json_item["creator"])
+        
+        if "parent" in json_item:
+            self.parent_id = json_item["parent"]["id"]
+        else:
+            self.parent_id = None
 
         self.fields = {}
         self.fields["body"] = json_item["body"]
-        #TODO: Add initializations for every api field
+        self.fields["status"] = json_item["status"]
+        self.fields["creation_date"] = json_item["created_at"]
+        self.fields["id"] = json_item["id"]
+        self.fields["up_votes"] = json_item["up_votes"]["total_count"]
 
 
     def __repr__(self):
@@ -92,14 +121,14 @@ class Answer(FieldContainer):
 
         self.fields = {}
         self.fields["body"] = json_item["body"]
-        self.fields["aid"] = json_item["id"]
+        self.fields["id"] = json_item["id"]
         self.fields["status"] = json_item["status"]
         self.fields["appreciations"] = json_item["appreciations"]
-        self.fields["post_date"] = json_item["created_at"]
+        self.fields["creation_date"] = json_item["created_at"]
         self.fields["is_most_helpful"] = json_item["is_most_helpful"]
         self.fields["thanks_count"] = json_item["appreciations"]
         self.fields["votes"] = json_item["user_satisfaction_counts"]
-        self.fields["views"] = json_item["statistics"]
+        self.fields["views"] = json_item["statistics"]["impressions"]
 
 
     def __repr__(self):
@@ -128,8 +157,8 @@ class Question(FieldContainer):
         self.fields["title"] = json_item["title"]
         self.fields["slug"] = json_item["slug"]
         self.fields["body"] = json_item["body"]
-        self.fields["qid"] = json_item["id"]
-        self.fields["post_date"] = json_item["created_at"]
+        self.fields["id"] = json_item["id"]
+        self.fields["creation_date"] = json_item["created_at"]
         self.fields["answer_count"] = json_item["answers"]["total_count"]
         self.fields["answer_count__live"] = json_item["answers"]["live_count"]
         self.fields["up_votes"] = json_item["up_votes"]["total_count"]
