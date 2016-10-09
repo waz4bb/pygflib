@@ -119,13 +119,9 @@ class Comment(FieldContainer):
     def __init__(self,json_item):
         if "creator" in json_item:
             self.user = User(json_item["creator"])
-        else:
-            self.user = None
         
         if "parent" in json_item:
             self.parent_id = json_item["parent"]["id"]
-        else:
-            self.parent_id = None
 
         self.fields = {}
 
