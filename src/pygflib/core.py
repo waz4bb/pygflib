@@ -1,10 +1,14 @@
 import requests
 import re
-from itertools import chain
 
 from lxml import html
 
 from pygflib.models import Question,Answer,Comment,User
+
+
+class InvalidResponseError(Exception):
+    pass
+
 
 class Gfapi():
     
@@ -52,9 +56,6 @@ class Gfapi():
     
     #TODO: improve this method to work better with tag queries
     def _apicall(self,objecttype,identifier=None,fields='',**kwargs):
-        if id == self.SEARCH and 'query' not in kwargs:
-            raise Exception('Searching requieres a query')
-      
         apiurl = 'https://api.gutefrage.net/{}{}{}?fields={}{}'.format(
                 objecttype,
                 '/' if identifier else '',
@@ -70,9 +71,16 @@ class Gfapi():
         r = requests.get(apiurl,params = {'fields' : fields},headers = self.header)
         try:
             json = r.json()
-            return json
+
         except ValueError:
-            return None
+            raise InvalidResponseError("No json could be decoded from request: Status {}".format(r.status_code))
+
+        if "error" in json:
+            raise InvalidResponseError("api error excepted: {e[type]} - {e[message]}".format(e=json["error"])) 
+        if "message" in json:
+            raise InvalidResponseError("api error message excepted: {}".format(json["message"]))
+
+        return json
     
     
     def search_tags(self,query,fields='',limit=10):

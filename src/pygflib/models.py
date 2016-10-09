@@ -1,6 +1,8 @@
+from itertools import chain
 
 
 class Image():
+
 
     SMALL = "small"
     THUMBNAIL = "thumbnail" #same size as SMALL
@@ -25,22 +27,8 @@ class Image():
         return self.raw_link.replace("%size%",size)
 
 
-    def __repr__(self):
-        return self.raw_link
-
-class Tag():
-
-    def __init__(self,json_item):
-        self.name = json_item["name"]
-        self.slug = json_item["slug"]
-        self.id = json_item["id"]
-        self.count = json_item["questions"]["total_count"]
-
-
-    def __repr__(self):
-        return self.name
-
 class FieldContainer():
+
 
     def __getattr__(self,field):
         try:
@@ -53,39 +41,86 @@ class FieldContainer():
         abstract = True
 
 
+class Tag(FieldContainer):
+
+    FIELDS = [
+            "name",
+            "slug",
+            "id"
+            ]
+
+    def __init__(self,json_item):
+        
+        self.fields = {}
+
+        for field in self.FIELDS:
+            if field in json_item:
+                self.fields[field] = json_item[field]
+
+        if "questions" in json_item:
+            self.count = json_item["questions"]["total_count"]
+
+
 class User(FieldContainer):
+    
+
+    FIELDS = [
+            "roles",
+            "slug",
+            "id",
+            "level",
+            "score",
+            "created_at",
+            "profession"
+            "gender",
+            "address",
+            "contact_information",
+            "birthday"
+            ]
+
+    FIELDMAPPINGS = {
+            "website_url" : "website",
+            "about_me" : "description",
+            "display_name" : "username"
+            } 
+
 
     def __init__(self,json_item):
         self.fields = {}
-
-        self.fields["avatar"] = Image(json_item["avatar_image"])
-        self.fields["cover"] = Image(json_item["cover_image"])
-
-        self.fields["username"] = json_item["display_name"]
-        self.fields["slug"] = json_item["slug"]
-        self.fields["id"] = json_item["id"]
-        self.fields["level"] = json_item["level"]
-        self.fields["score"] = json_item["score"]
-        self.fields["creation_date"] = json_item["created_at"]
-        self.fields["roles"] = json_item["roles"]
         
-        self.fields["description"] = json_item["about_me"]
-        self.fields["profession"] = json_item["profession"]
-        self.fields["birth_date"] = json_item["birthday"]
-        self.fields["gender"] = json_item["gender"]
-        self.fields["address"] = json_item["address"]
-        self.fields["contact_info"] = json_item["contact_information"]
-        self.fields["website"] = json_item["website_url"]
-        #TODO: add advanced fields
+        if "avatar_image" in json_item:
+            self.avatar = Image(json_item["avatar_image"])
 
-    def __repr__(self):
-        return self.fields["username"]
+        if "cover_image" in json_item:
+            self.cover = Image(json_item["cover_image"])
+
+        for field,mapping in self.FIELDMAPPINGS.items():
+            if field in json_item:
+                self.fields[mapping] = json_item[field]
+
+        for field in self.FIELDS:
+            if field in json_item:
+                self.fields[field] = json_item[field]
+
+        #TODO: add advanced fields
 
 
 class Comment(FieldContainer):
+    
+
+    FIELDS = [
+            "body",
+            "status",
+            "created_at",
+            "id"
+            ]
+
 
     def __init__(self,json_item):
-        self.user = User(json_item["creator"])
+        if "creator" in json_item:
+            self.user = User(json_item["creator"])
+        else:
+            self.user = None
         
         if "parent" in json_item:
             self.parent_id = json_item["parent"]["id"]
@@ -93,84 +128,110 @@ class Comment(FieldContainer):
             self.parent_id = None
 
         self.fields = {}
-        self.fields["body"] = json_item["body"]
-        self.fields["status"] = json_item["status"]
-        self.fields["creation_date"] = json_item["created_at"]
-        self.fields["id"] = json_item["id"]
-        self.fields["up_votes"] = json_item["up_votes"]["total_count"]
 
+        if "up_votes" in json_item:
+            self.up_votes = json_item["up_votes"]["total_count"]
 
-    def __repr__(self):
-        return self.fields["body"]
+        for field in self.FIELDS:
+            self.fields[field] = json_item[field]
 
     
 class Answer(FieldContainer):
 
+    
+    FIELDS = [
+            "body",
+            "id",
+            "status",
+            "appreciations",
+            "created_at",
+            "is_most_helpful"
+            ]
+
+
     def __init__(self,json_item):
-        self.user = User(json_item["creator"])
 
-        if len(json_item["images"]) == 0:
-            self.images = []
-        else:
+        if "creator" in json_item:
+            self.user = User(json_item["creator"])
+
+        if "images" in json_item:
             self.images = [Image(i) for i in json_item["images"]]
-
-        if "items" not in json_item["comments"] or json_item["comments"]["live_count"] == 0:
-            self.comments = []
         else:
-            self.comments = [Comment(i) for i in json_item["comments"]["items"]]
+            self.images = []
+
+        self.comments = []
+
+        if "comments" in json_item:
+            if "items" in json_item["comments"]:
+                self.comments = [Comment(i) for i in json_item["comments"]["items"]]
+
+            if "live_count" in json_item:
+                self.comment_count = json_item["live_count"]
 
         self.fields = {}
-        self.fields["body"] = json_item["body"]
-        self.fields["id"] = json_item["id"]
-        self.fields["status"] = json_item["status"]
-        self.fields["appreciations"] = json_item["appreciations"]
-        self.fields["creation_date"] = json_item["created_at"]
-        self.fields["is_most_helpful"] = json_item["is_most_helpful"]
-        self.fields["thanks_count"] = json_item["appreciations"]
-        self.fields["votes"] = json_item["user_satisfaction_counts"]
-        self.fields["views"] = json_item["statistics"]["impressions"]
 
+        if "views" in json_item:
+            self.views = json_item["statistics"]["impressions"]
 
-    def __repr__(self):
-        return self.fields["body"]
+        if "user_satisfaction_counts" in json_item:
+            self.up_votes = json_item["user_satisfaction_counts"]["positive_count"]
+            self.down_votes = json_item["user_satisfaction_counts"]["negative_count"]
+            self.score = self.up_votes - self.down_votes
+
+        for field in self.FIELDS:
+            if field in json_item:
+                self.fields[field] = json_item[field]
 
 
 class Question(FieldContainer):
 
+
+    FIELDS = [
+            "title",
+            "slug",
+            "body",
+            "id",
+            "created_at",
+            "has_most_helpful_answer",
+            "helpful_answer_status",
+            "status",
+            "latest_submission",
+            "latest_submission_date",
+            "latest_activity_at"
+            ]
+    
+
     def __init__(self,json_item):
-        self.user = User(json_item["creator"])
-        
-        if len(json_item["images"]) == 0:
-            self.images = []
-        else:
+
+        if "images" in json_item:
             self.images = [Image(i) for i in json_item["images"]]
-
-        if "items" not in json_item["answers"] or json_item["answers"]["live_count"] == 0:
-            self.answers = self.comments = []
         else:
-            self.answers = [Answer(i) for i in json_item["answers"]["items"]]
-            self.comments = list(chain.from_iterable([i.comments for i in self.answers]))
+            self.images = []
+        
+        self.answers = self.comments = []
 
-        self.tags = [Tag(i) for i in json_item["tags"]]
+        if "answers" in json_item:
+            if "items" in json_item["answers"]:
+                self.answers = [Answer(i) for i in json_item["answers"]["items"]]
+                self.comments = list(chain.from_iterable([i.comments for i in self.answers]))
+
+            if "live_count" in json_item["answers"]:
+                self.answer_count = json_item["answers"]["total_count"]
+
+        if "tags" in json_item:
+            self.tags = [Tag(i) for i in json_item["tags"]]
+
+        if "creator" in json_item:
+            self.user = User(json_item["creator"])
 
         self.fields = {}
-        self.fields["title"] = json_item["title"]
-        self.fields["slug"] = json_item["slug"]
-        self.fields["body"] = json_item["body"]
-        self.fields["id"] = json_item["id"]
-        self.fields["creation_date"] = json_item["created_at"]
-        self.fields["answer_count"] = json_item["answers"]["total_count"]
-        self.fields["answer_count__live"] = json_item["answers"]["live_count"]
-        self.fields["up_votes"] = json_item["up_votes"]["total_count"]
-        self.fields["has_most_helpful"] = json_item["has_most_helpful_answer"]
-        self.fields["most_helpful_status"] = json_item["helpful_answer_status"]
-        self.fields["status"] = json_item["status"]
-        self.fields["latest_submission"] = json_item["latest_submission"]
-        self.fields["latest_submission_date"] = json_item["latest_submission_date"]
-        self.fields["latest_activity_date"] = json_item["latest_activity_at"]
-        self.fields["views"] = json_item["statistics"]["impressions"]["total"]
-        self.fields["google_hits"] = json_item["statistics"]["google_hits"]["last13_months"]
+        
+        if "up_votes" in json_item:
+            self.fields["up_votes"] = json_item["up_votes"]["total_count"]
 
+        if "statistics" in json_item and "impressions" in json_item["statistics"]:
+            self.fields["views"] = json_item["statistics"]["impressions"]["total"]
 
-    def __repr__(self):
-        return self.fields["title"]
+        for field in self.FIELDS:
+            if field in json_item:
+                self.fields[field] = json_item[field]
