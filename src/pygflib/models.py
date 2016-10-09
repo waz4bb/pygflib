@@ -58,7 +58,7 @@ class Tag(FieldContainer):
                 self.fields[field] = json_item[field]
 
         if "questions" in json_item:
-            self.count = json_item["questions"]["total_count"]
+            self.fields["count"] = json_item["questions"]["total_count"]
 
 
 class User(FieldContainer):
@@ -89,10 +89,10 @@ class User(FieldContainer):
         self.fields = {}
         
         if "avatar_image" in json_item:
-            self.avatar = Image(json_item["avatar_image"])
+            self.fields["avatar"] = Image(json_item["avatar_image"])
 
         if "cover_image" in json_item:
-            self.cover = Image(json_item["cover_image"])
+            self.fields["cover"] = Image(json_item["cover_image"])
 
         for field,mapping in self.FIELDMAPPINGS.items():
             if field in json_item:
@@ -117,16 +117,16 @@ class Comment(FieldContainer):
 
 
     def __init__(self,json_item):
-        if "creator" in json_item:
-            self.user = User(json_item["creator"])
-        
-        if "parent" in json_item:
-            self.parent_id = json_item["parent"]["id"]
-
         self.fields = {}
 
+        if "creator" in json_item:
+            self.fields["user"] = User(json_item["creator"])
+        
+        if "parent" in json_item:
+            self.fields["comments"] = json_item["parent"]["id"]
+
         if "up_votes" in json_item:
-            self.up_votes = json_item["up_votes"]["total_count"]
+            self.fields["up_votes"] = json_item["up_votes"]["total_count"]
 
         for field in self.FIELDS:
             self.fields[field] = json_item[field]
@@ -139,7 +139,6 @@ class Answer(FieldContainer):
             "body",
             "id",
             "status",
-            "appreciations",
             "created_at",
             "is_most_helpful"
             ]
@@ -147,32 +146,35 @@ class Answer(FieldContainer):
 
     def __init__(self,json_item):
 
+        self.fields = {}
+
         if "creator" in json_item:
-            self.user = User(json_item["creator"])
+            self.fields["user"] = User(json_item["creator"])
+
+        if "appreciations" in json_item:
+            self.fields["appreciations"] = json_item["appreciations"]["total_count"]
 
         if "images" in json_item:
-            self.images = [Image(i) for i in json_item["images"]]
+            self.fields["images"] = [Image(i) for i in json_item["images"]]
         else:
-            self.images = []
+            self.fields["images"] = []
 
-        self.comments = []
+        self.fields["comments"] = []
 
         if "comments" in json_item:
             if "items" in json_item["comments"]:
-                self.comments = [Comment(i) for i in json_item["comments"]["items"]]
+                self.fields["comments"] = [Comment(i) for i in json_item["comments"]["items"]]
 
             if "live_count" in json_item:
-                self.comment_count = json_item["live_count"]
+                self.fields["comment_count"] = json_item["live_count"]
 
-        self.fields = {}
-
-        if "views" in json_item:
-            self.views = json_item["statistics"]["impressions"]
+        if "statistics" in json_item and "impressions" in json_item["statistics"]:
+            self.fields["views"] = json_item["statistics"]["impressions"]["total"]
 
         if "user_satisfaction_counts" in json_item:
-            self.up_votes = json_item["user_satisfaction_counts"]["positive_count"]
-            self.down_votes = json_item["user_satisfaction_counts"]["negative_count"]
-            self.score = self.up_votes - self.down_votes
+            self.fields["up_votes"] = json_item["user_satisfaction_counts"]["positive_count"]
+            self.fields["down_votes"] = json_item["user_satisfaction_counts"]["negative_count"]
+            self.fields["score"] = self.up_votes - self.down_votes
 
         for field in self.FIELDS:
             if field in json_item:
@@ -199,28 +201,29 @@ class Question(FieldContainer):
 
     def __init__(self,json_item):
 
+        self.fields = {}
+
         if "images" in json_item:
-            self.images = [Image(i) for i in json_item["images"]]
+            self.fields["images"] = [Image(i) for i in json_item["images"]]
         else:
-            self.images = []
+            self.fields["images"] = []
         
-        self.answers = self.comments = []
+        self.fields["answers"] = self.fields["comments"] = []
 
         if "answers" in json_item:
             if "items" in json_item["answers"]:
-                self.answers = [Answer(i) for i in json_item["answers"]["items"]]
-                self.comments = list(chain.from_iterable([i.comments for i in self.answers]))
+                self.fields["answers"] = [Answer(i) for i in json_item["answers"]["items"]]
+                self.fields["comments"] = list(chain.from_iterable([i.comments for i in self.answers]))
 
             if "live_count" in json_item["answers"]:
-                self.answer_count = json_item["answers"]["total_count"]
+                self.fields["answer_count"] = json_item["answers"]["total_count"]
 
         if "tags" in json_item:
-            self.tags = [Tag(i) for i in json_item["tags"]]
+            self.fields["tag"] = [Tag(i) for i in json_item["tags"]]
 
         if "creator" in json_item:
-            self.user = User(json_item["creator"])
+            self.fields["user"] = User(json_item["creator"])
 
-        self.fields = {}
         
         if "up_votes" in json_item:
             self.fields["up_votes"] = json_item["up_votes"]["total_count"]
@@ -231,3 +234,60 @@ class Question(FieldContainer):
         for field in self.FIELDS:
             if field in json_item:
                 self.fields[field] = json_item[field]
+
+
+class AbstractStream():
+
+
+    def __init__(self,json_item):
+        if "total_count" in json_item:
+            self.total_count = json_item["total_count"]
+
+
+    def next():
+        """ unimplemented """
+
+
+    def previous():
+        """ unimplemented """
+
+
+    def __getitem__(self,index):
+        return self.items[index]
+
+
+    def __iter__(self):
+        for i in self.items:
+            yield i
+
+
+    def __len__(self):
+        return len(self.items)
+
+
+    def __repr__(self):
+        return "[{}]".format(", ".join([repr(i) for i in self.items]))
+
+
+class QuestionStream(AbstractStream):
+
+
+    def __init__(self,json_item):
+        super().__init__(json_item)
+        self.items = [Question(i) for i in json_item["items"]]
+
+
+class AnswerStream(AbstractStream):
+
+
+    def __init__(self,json_item):
+        super().__init__(json_item)
+        self.items = [Answer(i) for i in json_item["items"]]
+
+
+class TagStream(AbstractStream):
+
+
+    def __init__(self,json_item):
+        super().__init__(json_item)
+        self.tags = [Tag(i) for i in json_item["items"]]

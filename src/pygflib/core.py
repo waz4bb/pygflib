@@ -3,7 +3,7 @@ import re
 
 from lxml import html
 
-from pygflib.models import Question,Answer,Comment,User
+from pygflib.models import Question,Answer,Comment,User,QuestionStream,TagStream,AnswerStream
 
 
 class InvalidResponseError(Exception):
@@ -55,7 +55,7 @@ class Gfapi():
     
     
     #TODO: improve this method to work better with tag queries
-    def _apicall(self,objecttype,identifier=None,fields='',**kwargs):
+    def _apicall(self,objecttype,identifier='',fields='',**kwargs):
         apiurl = 'https://api.gutefrage.net/{}{}{}?fields={}{}'.format(
                 objecttype,
                 '/' if identifier else '',
@@ -84,15 +84,21 @@ class Gfapi():
     
     
     def search_tags(self,query,fields='',limit=10):
-        return self._apicall(self.T,fields=fields,prefix=query,limit=limit)
+        return TagStream(
+                self._apicall(self.T,fields=fields,prefix=query,limit=limit)
+                )
     
     
     def get_recent_questions(self,fields='',limit=10):
-        return self._apicall(self.Q,self.LATEST,fields,limit=limit)
+        return QuestionStream(
+                self._apicall(self.Q,self.LATEST,fields,limit=limit)
+                )
     
     
     def search_questions(self,query,fields='',limit=10):
-        return self._apicall(self.Q,self.SEARCH,fields,limit=limit,query=query)
+        return QuestionStream(
+                self._apicall(self.Q,self.SEARCH,fields,limit=limit,query=query)
+                )
     
     
     def get_question(self,identifier,fields='',is_slug=False):
@@ -101,10 +107,11 @@ class Gfapi():
                 )
     
     
-    def get_question_answers(self,identifier,fields='',is_slug=False):
-        return self._apicall(self.Q,u'{}/{}'.format((self.SLUG + identifier) if is_slug else identifier,self.A),fields)
-    
-    
+    def get_question_answers(self,identifier,fields=''):
+        json_item = self._apicall(self.Q,u'{}/{}'.format(identifier,self.A),fields)
+        return [Answer(i) for i in json_item]
+
+
     def get_user(self,identifier,fields='',is_slug=False):
         return User(
                 self._apicall(self.U,(self.SLUG + identifier) if is_slug else identifier,fields)
@@ -124,19 +131,23 @@ class Gfapi():
     
     
     def get_user_questions(self,identifier,fields=''):
-        return self._apicall(self.U,u'{}/{}'.format(identifier,self.Q),fields)
+        return QuestionStream(
+                self._apicall(self.U,u'{}/{}'.format(identifier,self.Q),fields)
+                )
         
    
     def get_user_answers(self,identifier,fields='',limit=20,mosthelpful=False,is_slug=False):
         if mosthelpful:
-            return self._apicall(
+            json_item = self._apicall(
                     self.U,
                     u'{}/{}'.format((self.SLUG + identifier) if is_slug else identifier,self.A),
                     fields,onlyMostHelpful='True',limit=limit
                     )
         
-        return self._apicall(
+        json_item = self._apicall(
                 self.U,
                 u'{}/{}'.format((self.SLUG + identifier) if is_slug else identifier,self.A)
                 ,fields,limit=limit
                 )
+
+        return AnswerStream(json_item)
