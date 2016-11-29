@@ -109,7 +109,7 @@ class Gfapi():
     
     def get_question_answers(self,identifier,fields=''):
         json_item = self._apicall(self.Q,u'{}/{}'.format(identifier,self.A),fields)
-        return [Answer(i) for i in json_item]
+        return [Answer(i) for i in json_item["items"]]
 
 
     def get_user(self,identifier,fields='',is_slug=False):

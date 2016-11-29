@@ -129,7 +129,8 @@ class Comment(FieldContainer):
             self.fields["up_votes"] = json_item["up_votes"]["total_count"]
 
         for field in self.FIELDS:
-            self.fields[field] = json_item[field]
+            if field in json_item:
+                self.fields[field] = json_item[field]
 
     
 class Answer(FieldContainer):
@@ -165,8 +166,8 @@ class Answer(FieldContainer):
             if "items" in json_item["comments"]:
                 self.fields["comments"] = [Comment(i) for i in json_item["comments"]["items"]]
 
-            if "live_count" in json_item:
-                self.fields["comment_count"] = json_item["live_count"]
+            if "live_count" in json_item["comments"]:
+                self.fields["comment_count"] = json_item["comments"]["live_count"]
 
         if "statistics" in json_item and "impressions" in json_item["statistics"]:
             self.fields["views"] = json_item["statistics"]["impressions"]["total"]
@@ -216,10 +217,10 @@ class Question(FieldContainer):
                 self.fields["comments"] = list(chain.from_iterable([i.comments for i in self.answers]))
 
             if "live_count" in json_item["answers"]:
-                self.fields["answer_count"] = json_item["answers"]["total_count"]
+                self.fields["answer_count"] = json_item["answers"]["live_count"]
 
         if "tags" in json_item:
-            self.fields["tag"] = [Tag(i) for i in json_item["tags"]]
+            self.fields["tags"] = [Tag(i) for i in json_item["tags"]]
 
         if "creator" in json_item:
             self.fields["user"] = User(json_item["creator"])
