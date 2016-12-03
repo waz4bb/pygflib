@@ -83,6 +83,23 @@ class Gfapi():
         return json
     
     
+    def get_next_page(self,stream,fields=''):
+        return self._get_type_stream(stream.TYPE,self.get_gfurl(stream.next(),fields))
+
+
+    def get_previous_page(self,stream,fields=''):
+        return self._get_type_stream(stream.TYPE,self.get_gfurl(stream.previous(),fields))
+
+    
+    def _get_type_stream(self,objecttype,json_item):
+        if objecttype == self.A:
+            return AnswerStream(json_item)
+        elif objecttype == self.Q:
+            return QuestionStream(json_item)
+        elif objecttype == self.T:
+            return TagStream(json_item)
+
+
     def search_tags(self,query,fields='',limit=10):
         return TagStream(
                 self._apicall(self.T,fields=fields,prefix=query,limit=limit)
