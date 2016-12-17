@@ -15,15 +15,27 @@ Dependencies
 ------------
 
 PyGFapi requires `requests` and `lxml`
-To install them use:
+To install them manually use:
     
     pip install requests lxml
+
+
+Installation
+------------
+
+Install it from pypi using
+
+    pip install pygflib
+
+or manually by running
+
+    python setup.py install
 
 
 Road to 1.0
 -----------
 
 - [x] Core api call system
-- [ ] Model system for all api classes
+- [x] Model system for all api classes
 - [ ] Full documentation
 - [ ] Functions for storing and organizing fetched data
