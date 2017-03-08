@@ -10,27 +10,27 @@ class Image():
     K2 = "2000"
     K3 = "3000"
     ORIGINAL = "original" #full size uncropped
-    
+
     #Not confirmed to work
     M4 = "M4_160"
     MOBILE = "mobile"
     DESKTOP = "desktop"
 
 
-    def __init__(self,json_item):
+    def __init__(self, json_item):
         self.id = json_item["id"]
         self.raw_link = json_item["url"]
         self.description = json_item["description"]
 
 
-    def link(self,size):
-        return self.raw_link.replace("%size%",size)
+    def link(self, size):
+        return self.raw_link.replace("%size%", ''.join(size.split("?v=")[:-1]))
 
 
 class FieldContainer():
 
 
-    def __getattr__(self,field):
+    def __getattr__(self, field):
         try:
             return self.fields[field]
         except KeyError:
@@ -44,13 +44,13 @@ class FieldContainer():
 class Tag(FieldContainer):
 
     FIELDS = [
-            "name",
-            "slug",
-            "id"
-            ]
+        "name",
+        "slug",
+        "id"
+        ]
 
-    def __init__(self,json_item):
-        
+    def __init__(self, json_item):
+
         self.fields = {}
 
         for field in self.FIELDS:
@@ -62,39 +62,39 @@ class Tag(FieldContainer):
 
 
 class User(FieldContainer):
-    
+
 
     FIELDS = [
-            "roles",
-            "slug",
-            "id",
-            "level",
-            "score",
-            "created_at",
-            "profession"
-            "gender",
-            "address",
-            "contact_information",
-            "birthday"
-            ]
+        "roles",
+        "slug",
+        "id",
+        "level",
+        "score",
+        "created_at",
+        "profession"
+        "gender",
+        "address",
+        "contact_information",
+        "birthday"
+        ]
 
     FIELDMAPPINGS = {
-            "website_url" : "website",
-            "about_me" : "description",
-            "display_name" : "username"
-            } 
+        "website_url" : "website",
+        "about_me" : "description",
+        "display_name" : "username"
+        }
 
 
-    def __init__(self,json_item):
+    def __init__(self, json_item):
         self.fields = {}
-        
+
         if "avatar_image" in json_item:
             self.fields["avatar"] = Image(json_item["avatar_image"])
 
         if "cover_image" in json_item:
             self.fields["cover"] = Image(json_item["cover_image"])
 
-        for field,mapping in self.FIELDMAPPINGS.items():
+        for field, mapping in self.FIELDMAPPINGS.items():
             if field in json_item:
                 self.fields[mapping] = json_item[field]
 
@@ -106,22 +106,22 @@ class User(FieldContainer):
 
 
 class Comment(FieldContainer):
-    
+
 
     FIELDS = [
-            "body",
-            "status",
-            "created_at",
-            "id"
-            ]
+        "body",
+        "status",
+        "created_at",
+        "id"
+        ]
 
 
-    def __init__(self,json_item):
+    def __init__(self, json_item):
         self.fields = {}
 
         if "creator" in json_item:
             self.fields["user"] = User(json_item["creator"])
-        
+
         if "parent" in json_item:
             self.fields["comments"] = json_item["parent"]["id"]
 
@@ -132,20 +132,20 @@ class Comment(FieldContainer):
             if field in json_item:
                 self.fields[field] = json_item[field]
 
-    
+
 class Answer(FieldContainer):
 
-    
+
     FIELDS = [
-            "body",
-            "id",
-            "status",
-            "created_at",
-            "is_most_helpful"
-            ]
+        "body",
+        "id",
+        "status",
+        "created_at",
+        "is_most_helpful"
+        ]
 
 
-    def __init__(self,json_item):
+    def __init__(self, json_item):
 
         self.fields = {}
 
@@ -186,21 +186,23 @@ class Question(FieldContainer):
 
 
     FIELDS = [
-            "title",
-            "slug",
-            "body",
-            "id",
-            "created_at",
-            "has_most_helpful_answer",
-            "helpful_answer_status",
-            "status",
-            "latest_submission",
-            "latest_submission_date",
-            "latest_activity_at"
-            ]
-    
+        "title",
+        "slug",
+        "body",
+        "id",
+        "created_at",
+        "has_most_helpful_answer",
+        "helpful_answer_status",
+        "status",
+        "latest_submission",
+        "latest_submission_date",
+        "latest_activity_at",
+        "deleted_at",
+        "complaint_status"
+        ]
 
-    def __init__(self,json_item):
+
+    def __init__(self, json_item):
 
         self.fields = {}
 
@@ -208,13 +210,15 @@ class Question(FieldContainer):
             self.fields["images"] = [Image(i) for i in json_item["images"]]
         else:
             self.fields["images"] = []
-        
+
         self.fields["answers"] = self.fields["comments"] = []
 
         if "answers" in json_item:
             if "items" in json_item["answers"]:
                 self.fields["answers"] = [Answer(i) for i in json_item["answers"]["items"]]
-                self.fields["comments"] = list(chain.from_iterable([i.comments for i in self.answers]))
+                self.fields["comments"] = list(chain.from_iterable(
+                    [i.comments for i in self.answers]
+                    ))
 
             if "live_count" in json_item["answers"]:
                 self.fields["answer_count"] = json_item["answers"]["live_count"]
@@ -225,7 +229,7 @@ class Question(FieldContainer):
         if "creator" in json_item:
             self.fields["user"] = User(json_item["creator"])
 
-        
+
         if "up_votes" in json_item:
             self.fields["up_votes"] = json_item["up_votes"]["total_count"]
 
@@ -243,7 +247,10 @@ class AbstractStream():
     BASE_URL = "https://api.gutefrage.net"
 
 
-    def __init__(self,json_item):
+    def __init__(self, json_item, fields):
+
+        self.items = fields
+
         if "total_count" in json_item:
             self.total_count = json_item["total_count"]
         if "links" in json_item:
@@ -259,7 +266,7 @@ class AbstractStream():
         return self.BASE_URL + self.previous_link
 
 
-    def __getitem__(self,index):
+    def __getitem__(self, index):
         return self.items[index]
 
 
@@ -282,9 +289,8 @@ class QuestionStream(AbstractStream):
     TYPE = "questions"
 
 
-    def __init__(self,json_item):
-        super().__init__(json_item)
-        self.items = [Question(i) for i in json_item["items"]]
+    def __init__(self, json_item):
+        super().__init__(json_item, [Question(i) for i in json_item["items"]])
 
 
 class AnswerStream(AbstractStream):
@@ -293,9 +299,8 @@ class AnswerStream(AbstractStream):
     TYPE = "answers"
 
 
-    def __init__(self,json_item):
-        super().__init__(json_item)
-        self.items = [Answer(i) for i in json_item["items"]]
+    def __init__(self, json_item):
+        super().__init__(json_item, [Answer(i) for i in json_item["items"]])
 
 
 class TagStream(AbstractStream):
@@ -304,6 +309,5 @@ class TagStream(AbstractStream):
     TYPE = "tags"
 
 
-    def __init__(self,json_item):
-        super().__init__(json_item)
-        self.tags = [Tag(i) for i in json_item["items"]]
+    def __init__(self, json_item):
+        super().__init__(json_item, [Tag(i) for i in json_item["items"]])
