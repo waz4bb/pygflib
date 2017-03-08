@@ -14,10 +14,14 @@ as well as offering complete and concise documentation.
 Dependencies
 ------------
 
-PyGFapi requires `requests` and `lxml`
-To install them manually use:
+PyGFapi requires `requests` the request module
+To install it manually use:
     
-    pip install requests lxml
+    pip install requests
+
+Optionally, for automatic apikey gathering `lxml` is required:
+
+    pip install lxml
 
 
 Installation

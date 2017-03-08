@@ -1,6 +1,7 @@
 import re
 import copy
 import warnings
+import functools
 
 import requests
 
@@ -14,8 +15,23 @@ except ImportError as e:
 from pygflib.models import Question, Answer, Comment, User, QuestionStream, TagStream, AnswerStream
 
 
+class UnauthorizedError(Exception):
+    pass
+
+
 class InvalidResponseError(Exception):
     pass
+
+
+def authorized(wrapped):
+    @functools.wraps(wrapped)
+    def auth_check(self, *args, **kwargs):
+        if "Authorization" not in self.header:
+            raise UnauthorizedError("This action requires authorization. Use login or refresh first.")
+
+        return wrapped(self, *args, **kwargs)
+
+    return auth_check
 
 
 class Gfapi():
@@ -40,7 +56,6 @@ class Gfapi():
     DEFAULTHEADER = {
         'User-Agent' : 'Dalvik/2.1.0 (Linux; U; Android 7.1; Android SDK built for x86 Build/NPF26K)',
         'Accept' : 'application/json',
-        'Accept-Language' : 'de,en-US;q=0.7,en;q=0.3',
         'DNT' : '1',
         'Connection' : 'close',
         'host' : 'api.gutefrage.net',
@@ -72,6 +87,7 @@ class Gfapi():
 
 
     def get_apikey(self, header=None):
+
         self.header = copy.deepcopy(self.DEFAULTHEADER)
 
         if header is None:
@@ -99,13 +115,13 @@ class Gfapi():
             '/' if identifier else '',
             identifier,
             "?" if fields is not None or params in kwargs else '',
-            "fields={}".format(fields) if fields is not None else '',
-            "&" if fields is not None else '',
-            params
+            params,
+            '&' if params else '',
+            "fields={}".format(fields) if fields is not None else ''
             )
 
         return self.get_gfurl(apiurl, fields)
-
+    
 
     def get_gfurl(self, apiurl, fields='', mode=GET, json_payload=None):
 
@@ -146,6 +162,9 @@ class Gfapi():
             json_payload={"username" : username, "password" : password}
             )
 
+        if 'type' in response:
+            raise UnauthorizedError("Login failed: " + response['type'])
+
         self.header["Authorization"] = response["access_token"]
 
         return response["refresh_token"]
@@ -165,6 +184,56 @@ class Gfapi():
         self.header["Authorization"] = response["access_token"]
 
         return response["refresh_token"]
+
+
+    @authorized
+    def post_answer(self, question_id, body, is_html=False):
+
+        if not is_html:
+            body = "<p>{}</p>".format(body)
+
+        response = self.get_gfurl(
+            self.BASE_URL + "/answers",
+            mode=self.POST,
+            json_payload={"question_id" : question_id, "body" : body}
+            )
+
+        return response["id"]
+
+
+    @authorized
+    def post_comment(self, answer_id, body):
+
+        response = self.get_gfurl(
+            self.BASE_URL + "/comments",
+            mode=self.POST,
+            json_payload={"answer_id" : answer_id, "body" : body}
+            )
+
+        return response["id"]
+
+
+    @authorized
+    def post_question(self, title, body, tags, images=None, subscribe=True):
+
+        payload = {
+            "body" : body,
+            "tags" : tags,
+            "subscribe" : subscribe,
+            "title" : title,
+            "images" : []
+            }
+
+        if images is not None:
+            payload["images"] = [{"id" : img.id, "description" : img.description} for img in images]
+
+        response = self.get_gfurl(
+            self.BASE_URL + "/questions",
+            mode=self.POST,
+            json_payload=payload
+            )
+
+        return response["id"]
 
 
     def get_next_page(self, stream, fields=''):

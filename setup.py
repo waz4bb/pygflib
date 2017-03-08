@@ -23,7 +23,7 @@ CLASSIFIERS = [
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-INSTALL_REQUIRES = ["requests","lxml"]
+INSTALL_REQUIRES = ["requests"]
 
 ###################################################################
 
@@ -71,4 +71,7 @@ if __name__ == "__main__":
         zip_safe=False,
         classifiers=CLASSIFIERS,
         install_requires=INSTALL_REQUIRES,
+        extras_require={
+            'Automatic key retrieval':  ["lxml"]
+        }
     )
