@@ -244,26 +244,15 @@ class Question(FieldContainer):
 class AbstractStream():
 
 
-    BASE_URL = "https://api.gutefrage.net"
-
-
-    def __init__(self, json_item, fields):
+    def __init__(self, json_item, fields, keep_history=False):
 
         self.items = fields
 
         if "total_count" in json_item:
             self.total_count = json_item["total_count"]
         if "links" in json_item:
-            self.next_link = json_item["links"][1]["href"]
-            self.previous_link = json_item["links"][0]["href"]
-
-
-    def next(self):
-        return self.BASE_URL + self.next_link
-
-
-    def previous(self):
-        return self.BASE_URL + self.previous_link
+            self.next = json_item["links"][1]["href"]
+            self.previous = json_item["links"][0]["href"]
 
 
     def __getitem__(self, index):
